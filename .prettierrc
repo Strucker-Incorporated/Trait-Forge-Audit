@@ -8,5 +8,6 @@
   "jsxSingleQuote": false,
   "bracketSpacing": true,
   "jsxBracketSameLine": false,
-  "arrowParens": "avoid"
+  "arrowParens": "avoid",
+  "plugins": ["prettier-plugin-solidity"]
 }
