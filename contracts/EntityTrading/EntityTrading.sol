@@ -1,118 +1,95 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import '@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol';
+import '@openzeppelin/contracts/token/ERC721/ERC721.sol'; // Import ERC721
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/Pausable.sol';
-import './IEntityTrading.sol';
 import '../TraitForgeNft/ITraitForgeNft.sol';
+import './IEntityTrading.sol';
 
-contract EntityTrading is IEntityTrading, ReentrancyGuard, Ownable, Pausable {
-  ITraitForgeNft public nftContract;
-  address payable public nukeFundAddress;
-  uint256 public taxCut = 10;
+contract EntityTrading is IEntityTrading, ERC721, ReentrancyGuard, Ownable, Pausable {
+    ITraitForgeNft public nftContract;
+    address payable public nukeFundAddress;
+    uint256 public taxCut = 10; // Represents a 10% tax cut
 
-  uint256 public listingCount = 0;
-  /// @dev tokenid -> listings index
-  mapping(uint256 => uint256) public listedTokenIds;
-  /// @dev index -> listing info
-  mapping(uint256 => Listing) public listings;
+    uint256 public listingCount = 0;
 
-  constructor(address _traitForgeNft) {
-    nftContract = ITraitForgeNft(_traitForgeNft);
-  }
+    /// @dev tokenid -> listings index
+    mapping(uint256 => uint256) public listedTokenIds;
+    /// @dev index -> listing info
+    mapping(uint256 => Listing) public listings;
 
-  // allows the owner to set NukeFund address
-  function setNukeFundAddress(
-    address payable _nukeFundAddress
-  ) external onlyOwner {
-    nukeFundAddress = _nukeFundAddress;
-  }
+    // Constructor properly initializes the Ownable and ERC721 contracts
+    constructor(address initialOwner) ERC721('TraitForgeNft', 'TFGNFT') Ownable(initialOwner) {
+        whitelistEndTime = block.timestamp + 24 hours;
+    }
 
-  function setTaxCut(uint256 _taxCut) external onlyOwner {
-    taxCut = _taxCut;
-  }
+    // Allows the owner to set the NukeFund address
+    function setNukeFundAddress(address payable _nukeFundAddress) external onlyOwner {
+        nukeFundAddress = _nukeFundAddress;
+    }
 
-  // function to lsit NFT for sale
-  function listNFTForSale(
-    uint256 tokenId,
-    uint256 price
-  ) public whenNotPaused nonReentrant {
-    require(price > 0, 'Price must be greater than zero');
-    require(
-      nftContract.ownerOf(tokenId) == msg.sender,
-      'Sender must be the NFT owner.'
-    );
-    require(
-      nftContract.getApproved(tokenId) == address(this) ||
-        nftContract.isApprovedForAll(msg.sender, address(this)),
-      'Contract must be approved to transfer the NFT.'
-    );
+    function setTaxCut(uint256 _taxCut) external onlyOwner {
+        taxCut = _taxCut;
+    }
 
-    nftContract.transferFrom(msg.sender, address(this), tokenId); // trasnfer NFT to contract
+    // Function to list an NFT for sale
+    function listNFTForSale(uint256 tokenId, uint256 price) public whenNotPaused nonReentrant {
+        require(price > 0, 'Price must be greater than zero');
+        require(nftContract.ownerOf(tokenId) == msg.sender, 'Sender must be the NFT owner');
+        require(nftContract.getApproved(tokenId) == address(this) || nftContract.isApprovedForAll(msg.sender, address(this)), 'Contract must be approved to transfer the NFT');
 
-    ++listingCount;
-    listings[listingCount] = Listing(msg.sender, tokenId, price, true);
-    listedTokenIds[tokenId] = listingCount;
+        nftContract.transferFrom(msg.sender, address(this), tokenId); // Transfer NFT to contract
 
-    emit NFTListed(tokenId, msg.sender, price);
-  }
+        ++listingCount;
+        listings[listingCount] = Listing(msg.sender, tokenId, price, true);
+        listedTokenIds[tokenId] = listingCount;
 
-  // function to buy an NFT listed for sale
-  function buyNFT(uint256 tokenId) external payable whenNotPaused nonReentrant {
-    Listing memory listing = listings[listedTokenIds[tokenId]];
-    require(
-      msg.value == listing.price,
-      'ETH sent does not match the listing price'
-    );
-    require(listing.seller != address(0), 'NFT is not listed for sale.');
+        emit NFTListed(tokenId, msg.sender, price);
+    }
 
-    //transfer eth to seller (distribute to nukefund)
-    uint256 nukeFundContribution = msg.value / taxCut;
-    uint256 sellerProceeds = msg.value - nukeFundContribution;
-    transferToNukeFund(nukeFundContribution); // transfer contribution to nukeFund
+    // Function to buy an NFT listed for sale
+    function buyNFT(uint256 tokenId) external payable whenNotPaused nonReentrant {
+        Listing memory listing = listings[listedTokenIds[tokenId]];
+        require(listing.isActive, 'NFT is not listed for sale');
+        require(msg.value == listing.price, 'ETH sent does not match the listing price');
 
-    // transfer NFT from contract to buyer
-    (bool success, ) = payable(listing.seller).call{ value: sellerProceeds }(
-      ''
-    );
-    require(success, 'Failed to send to seller');
-    nftContract.transferFrom(address(this), msg.sender, tokenId); // transfer NFT to the buyer
+        uint256 nukeFundContribution = msg.value * taxCut / 100;
+        uint256 sellerProceeds = msg.value - nukeFundContribution;
 
-    delete listings[listedTokenIds[tokenId]]; // remove listing
+        // Transfer ETH to NukeFund and seller
+        transferToNukeFund(nukeFundContribution);
 
-    emit NFTSold(
-      tokenId,
-      listing.seller,
-      msg.sender,
-      msg.value,
-      nukeFundContribution
-    ); // emit an event for the sale
-  }
+        (bool success, ) = payable(listing.seller).call{ value: sellerProceeds }('');
+        require(success, 'Failed to send ETH to seller');
 
-  function cancelListing(uint256 tokenId) public whenNotPaused nonReentrant {
-    Listing storage listing = listings[listedTokenIds[tokenId]];
+        nftContract.transferFrom(address(this), msg.sender, tokenId); // Transfer NFT to the buyer
 
-    // check if caller is the seller and listing is acivte
-    require(
-      listing.seller == msg.sender,
-      'Only the seller can canel the listing.'
-    );
-    require(listing.isActive, 'Listing is not active.');
+        delete listings[listedTokenIds[tokenId]]; // Remove listing
 
-    nftContract.transferFrom(address(this), msg.sender, tokenId); // transfer the nft back to seller
+        emit NFTSold(tokenId, listing.seller, msg.sender, msg.value, nukeFundContribution);
+    }
 
-    delete listings[listedTokenIds[tokenId]]; // mark the listing as inactive or delete it
+    // Function to cancel a listing
+    function cancelListing(uint256 tokenId) public whenNotPaused nonReentrant {
+        Listing storage listing = listings[listedTokenIds[tokenId]];
 
-    emit ListingCanceled(tokenId, msg.sender);
-  }
+        require(listing.seller == msg.sender, 'Only the seller can cancel the listing');
+        require(listing.isActive, 'Listing is not active');
 
-  // Correct and secure version of transferToNukeFund function
-  function transferToNukeFund(uint256 amount) private {
-    require(nukeFundAddress != address(0), 'NukeFund address not set');
-    (bool success, ) = nukeFundAddress.call{ value: amount }('');
-    require(success, 'Failed to send Ether to NukeFund');
-    emit NukeFundContribution(address(this), amount);
-  }
+        nftContract.transferFrom(address(this), msg.sender, tokenId); // Transfer the NFT back to the seller
+
+        delete listings[listedTokenIds[tokenId]]; // Remove listing
+
+        emit ListingCanceled(tokenId, msg.sender);
+    }
+
+    // Private function to transfer ETH to NukeFund
+    function transferToNukeFund(uint256 amount) private {
+        require(nukeFundAddress != address(0), 'NukeFund address not set');
+        (bool success, ) = nukeFundAddress.call{ value: amount }('');
+        require(success, 'Failed to send ETH to NukeFund');
+        emit NukeFundContribution(nukeFundAddress, amount);
+    }
 }

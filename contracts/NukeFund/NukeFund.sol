@@ -23,13 +23,13 @@ contract NukeFund is INukeFund, ReentrancyGuard, Ownable, Pausable {
   uint256 public minimumDaysHeld = 3 days;
   uint256 public ageMultiplier;
 
-  // Constructor now properly passes the initial owner address to the Ownable constructor
+  // Constructor properly initializes the Ownable contract
   constructor(
     address _traitForgeNft,
     address _airdrop,
     address payable _devAddress,
     address payable _daoAddress
-  ) {
+  ) Ownable(initialOwner) {
     nftContract = ITraitForgeNft(_traitForgeNft);
     airdropContract = IAirdrop(_airdrop);
     devAddress = _devAddress; // Set the developer's address
@@ -106,7 +106,7 @@ contract NukeFund is INukeFund, ReentrancyGuard, Ownable, Pausable {
     return fund;
   }
 
-  function setAgeMultplier(uint256 _ageMultiplier) external onlyOwner {
+  function setAgeMultiplier(uint256 _ageMultiplier) external onlyOwner {
     ageMultiplier = _ageMultiplier;
   }
 

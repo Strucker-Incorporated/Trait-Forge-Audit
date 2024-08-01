@@ -8,68 +8,72 @@ import '@openzeppelin/contracts/security/Pausable.sol';
 import './IAirdrop.sol';
 
 contract Airdrop is IAirdrop, Ownable, ReentrancyGuard, Pausable {
-  bool private started;
-  bool private daoAllowed;
+    bool private started;
+    bool private daoAllowed;
 
-  IERC20 public traitToken;
-  uint256 public totalTokenAmount;
-  uint256 public totalValue;
+    IERC20 public traitToken;
+    uint256 public totalTokenAmount;
+    uint256 public totalValue;
 
-  mapping(address => uint256) public userInfo;
+    mapping(address => uint256) public userInfo;
 
-  function setTraitToken(address _traitToken) external onlyOwner {
-    traitToken = IERC20(_traitToken);
-  }
+    constructor(address initialOwner) Ownable(initialOwner) {
+        // Constructor logic if needed
+    }
 
-  function startAirdrop(
-    uint256 amount
-  ) external whenNotPaused nonReentrant onlyOwner {
-    require(!started, 'Already started');
-    require(amount > 0, 'Invalid amount');
-    traitToken.transferFrom(tx.origin, address(this), amount);
-    started = true;
-    totalTokenAmount = amount;
-  }
+    function setTraitToken(address _traitToken) external onlyOwner {
+        traitToken = IERC20(_traitToken);
+    }
 
-  function airdropStarted() external view returns (bool) {
-    return started;
-  }
+    function startAirdrop(
+        uint256 amount
+    ) external whenNotPaused nonReentrant onlyOwner {
+        require(!started, 'Already started');
+        require(amount > 0, 'Invalid amount');
+        traitToken.transferFrom(tx.origin, address(this), amount);
+        started = true;
+        totalTokenAmount = amount;
+    }
 
-  function allowDaoFund() external onlyOwner {
-    require(started, 'Not started');
-    require(!daoAllowed, 'Already allowed');
-    daoAllowed = true;
-  }
+    function airdropStarted() external view returns (bool) {
+        return started;
+    }
 
-  function daoFundAllowed() external view returns (bool) {
-    return daoAllowed;
-  }
+    function allowDaoFund() external onlyOwner {
+        require(started, 'Not started');
+        require(!daoAllowed, 'Already allowed');
+        daoAllowed = true;
+    }
 
-  function addUserAmount(
-    address user,
-    uint256 amount
-  ) external whenNotPaused nonReentrant onlyOwner {
-    require(!started, 'Already started');
-    userInfo[user] += amount;
-    totalValue += amount;
-  }
+    function daoFundAllowed() external view returns (bool) {
+        return daoAllowed;
+    }
 
-  function subUserAmount(
-    address user,
-    uint256 amount
-  ) external whenNotPaused nonReentrant onlyOwner {
-    require(!started, 'Already started');
-    require(userInfo[user] >= amount, 'Invalid amount');
-    userInfo[user] -= amount;
-    totalValue -= amount;
-  }
+    function addUserAmount(
+        address user,
+        uint256 amount
+    ) external whenNotPaused nonReentrant onlyOwner {
+        require(!started, 'Already started');
+        userInfo[user] += amount;
+        totalValue += amount;
+    }
 
-  function claim() external whenNotPaused nonReentrant {
-    require(started, 'Not started');
-    require(userInfo[msg.sender] > 0, 'Not eligible');
+    function subUserAmount(
+        address user,
+        uint256 amount
+    ) external whenNotPaused nonReentrant onlyOwner {
+        require(!started, 'Already started');
+        require(userInfo[user] >= amount, 'Invalid amount');
+        userInfo[user] -= amount;
+        totalValue -= amount;
+    }
 
-    uint256 amount = (totalTokenAmount * userInfo[msg.sender]) / totalValue;
-    traitToken.transfer(msg.sender, amount);
-    userInfo[msg.sender] = 0;
-  }
+    function claim() external whenNotPaused nonReentrant {
+        require(started, 'Not started');
+        require(userInfo[msg.sender] > 0, 'Not eligible');
+
+        uint256 amount = (totalTokenAmount * userInfo[msg.sender]) / totalValue;
+        traitToken.transfer(msg.sender, amount);
+        userInfo[msg.sender] = 0;
+    }
 }

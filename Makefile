@@ -12,15 +12,25 @@ clean:
 
 # Install necessary dependencies including Rust, Aderyn, Echidna, Slither, and Foundry
 install:
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source $HOME/.cargo/env && cargo install aderyn && forge install foundry-rs/forge-std --no-commit && forge install openzeppelin/openzeppelin-contracts --no-commit && forge install openzeppelin/openzeppelin-contracts-upgradeable --no-commit && $(MAKE) echidna && $(MAKE) slither && $(MAKE) foundry
+	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+	source $HOME/.cargo/env
+	cargo install aderyn
+	forge install foundry-rs/forge-std --no-commit
+	forge install openzeppelin/openzeppelin-contracts --no-commit
+	forge install openzeppelin/openzeppelin-contracts-upgradeable --no-commit
+	$(MAKE) echidna
+	$(MAKE) slither
+	$(MAKE) foundry
 
 # Install Rust
 rust:
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && source $HOME/.cargo/env
+	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+	source $HOME/.cargo/env
 
 # Install Aderyn
 aderyn:
-	cargo install aderyn && aderyn .
+	cargo install aderyn
+	aderyn .
 
 # Install Echidna
 echidna:
@@ -36,12 +46,14 @@ slither:
 # Install Foundry
 foundry:
 	curl -L https://foundry.paradigm.xyz | bash
-	source $HOME/.foundry/env && foundryup
+	source $HOME/.foundry/env
+	foundryup
 
 # Update Dependencies
 update:
 	forge update
 
+# Install OpenZeppelin Contracts
 openzeppelin:
 	forge install openzeppelin/openzeppelin-contracts --no-commit
 

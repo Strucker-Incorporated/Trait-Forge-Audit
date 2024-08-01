@@ -12,12 +12,21 @@ import '../EntropyGenerator/IEntropyGenerator.sol';
 import '../Airdrop/IAirdrop.sol';
 
 contract TraitForgeNft is
-  ITraitForgeNft,
-  ERC721Enumerable,
-  ReentrancyGuard,
-  Ownable,
-  Pausable
+    ERC721,
+    ERC721Enumerable,
+    ReentrancyGuard,
+    Ownable,
+    Pausable
 {
+
+   // Event declarations
+    event NukeFundContractUpdated(address indexed newNukeFundAddress);
+    event Minted(address indexed minter, uint256 tokenId, uint256 generation, uint256 entropy, uint256 mintPrice);
+    event NewEntityMinted(address indexed newOwner, uint256 tokenId, uint256 generation, uint256 entropy);
+    event GenerationIncremented(uint256 newGeneration);
+    event FundsDistributedToNukeFund(address indexed nukeFundAddress, uint256 totalAmount);
+
+    
   // Constants for token generation and pricing
   uint256 public maxTokensPerGen = 10000;
   uint256 public startPrice = 0.005 ether;
@@ -135,7 +144,7 @@ contract TraitForgeNft is
     address spender,
     uint256 tokenId
   ) public view returns (bool) {
-    return _isApprovedOrOwner(spender, tokenId);
+    return isApprovedOrOwner(spender, tokenId);
   }
 
   function burn(uint256 tokenId) external whenNotPaused nonReentrant {
@@ -369,28 +378,26 @@ contract TraitForgeNft is
     address to,
     uint256 firstTokenId,
     uint256 batchSize
-  ) internal virtual override {
+) internal override {
     super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
 
     uint listedId = entityForgingContract.getListedTokenIds(firstTokenId);
-    /// @dev don't update the transferred timestamp if from and to address are same
     if (from != to) {
-      lastTokenTransferredTimestamp[firstTokenId] = block.timestamp;
+        lastTokenTransferredTimestamp[firstTokenId] = block.timestamp;
     }
 
     if (listedId > 0) {
-      IEntityForging.Listing memory listing = entityForgingContract.getListings(
-        listedId
-      );
-      if (
-        listing.tokenId == firstTokenId &&
-        listing.account == from &&
-        listing.isListed
-      ) {
-        entityForgingContract.cancelListingForForging(firstTokenId);
-      }
+        IEntityForging.Listing memory listing = entityForgingContract.getListings(listedId);
+        if (
+            listing.tokenId == firstTokenId &&
+            listing.account == from &&
+            listing.isListed
+        ) {
+            entityForgingContract.cancelListingForForging(firstTokenId);
+        }
     }
 
     require(!paused(), 'ERC721Pausable: token transfer while paused');
-  }
+}
+
 }
