@@ -1,4 +1,5 @@
 [profile.default]
+evm_version = "istanbul"
 src = "contracts"  # Set to the root of the contracts directory
 out = "out"
 libs = ["lib"]
