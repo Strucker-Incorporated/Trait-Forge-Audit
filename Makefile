@@ -78,7 +78,7 @@ slither:
 	    --config-file slither.config.json \
 	    --checklist \
 	    --show-ignored-findings \
-	    > slither_Overrall.md
+	    > slither_Optimizationals.json
 
 scope:
 	tree ./contracts/ | sed 's/└/#/g; s/──/--/g; s/├/#/g; s/│ /|/g; s/│/|/g'
