@@ -1,11 +1,2 @@
 {
-  "editor.defaultFormatter": "JuanBlanco.solidity",
-  "[solidity]": {
-    "editor.defaultFormatter": "JuanBlanco.solidity"
-  },
-  "editor.formatOnSave": true,
-  "prettier.requireConfig": true,
-  "files.associations": {
-    "*.sol": "solidity"
-  }
 }
