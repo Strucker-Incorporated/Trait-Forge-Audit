@@ -37,7 +37,7 @@ echidna:
 	curl -L -o echidna-2.2.4-x86_64-linux.tar.gz https://github.com/crytic/echidna/releases/download/v2.2.4/echidna-2.2.4-x86_64-linux.tar.gz
 	tar -xzf echidna-2.2.4-x86_64-linux.tar.gz
 	sudo chmod +x echidna
-	mv echidna /usr/local/bin/echidna
+	sudo mv echidna /usr/local/bin/echidna
 
 # Install Slither
 slither:
@@ -78,7 +78,7 @@ slither:
 	    --config-file slither.config.json \
 	    --checklist \
 	    --show-ignored-findings \
-	    > slither_report.md
+	    > slither_Overrall.md
 
 scope:
 	tree ./contracts/ | sed 's/└/#/g; s/──/--/g; s/├/#/g; s/│ /|/g; s/│/|/g'
