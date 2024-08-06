@@ -2,5 +2,6 @@
     "terminal.integrated.defaultProfile.windows": "bash",
     "terminal.integrated.defaultProfile.osx": "bash",
     "terminal.integrated.defaultProfile.linux": "bash",
-    "workbench.panel.defaultLocation": "right"
+    "workbench.panel.defaultLocation": "right",
+    "solidity.compileUsingRemoteVersion": "v0.8.20+commit.a1b79de6"
 }
